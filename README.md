@@ -1,4 +1,6 @@
 # bitmap2video
+![](bitmap2video.gif)
+
 Generate video from Bitmaps or a Canvas in Android.
 
 Create mp4 video from Bitmaps or anything you can draw to a hardware accelerated Canvas.  Pure, simple Android MediaCodec implementation.  Requires no third party libs or NDK.
