@@ -1,6 +1,7 @@
 package com.homesoft.encoder;
 
 import android.media.MediaCodec;
+import android.media.MediaExtractor;
 
 import java.nio.ByteBuffer;
 
@@ -21,8 +22,19 @@ import java.nio.ByteBuffer;
  */
 
 public interface FrameMuxer {
+
     boolean isStarted();
+
     void start(final FrameEncoder frameEncoder);
+
+    void start(FrameEncoder frameEncoder, MediaExtractor audioExtractor);
+
     void muxVideoFrame(final ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo);
+
+    void muxAudioFrame(ByteBuffer encodedData, MediaCodec.BufferInfo audioBufferInfo);
+
     void release();
+
+    long getVideoTime();
+
 }

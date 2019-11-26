@@ -1,9 +1,11 @@
 package com.homesoft.encoder;
 
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.media.MediaCodec;
+import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Build;
 import android.util.Log;
@@ -32,11 +34,10 @@ public class FrameEncoder {
     private static final String TAG = FrameEncoder.class.getSimpleName();
     private static final boolean VERBOSE = false;
 
-    private final static long SECOND_IN_USEC = 1000000;
-
+    private static final long SECOND_IN_USEC = 1000000;
     private static final int TIMEOUT_USEC = 10000;
 
-    private final EncoderConfig mEncoderConfing;
+    private final EncoderConfig mEncoderConfig;
 
     private MediaCodec.BufferInfo mBufferInfo;
     private MediaCodec mEncoder;
@@ -44,31 +45,49 @@ public class FrameEncoder {
     private Rect mCanvasRect;
 
     private FrameMuxer mFrameMuxer;
+    private MediaExtractor audioExtractor;
+    private int audioTrackFrameCount = 0;
 
     public static long getFrameTime(final float framesPerSecond) {
         return (long)(SECOND_IN_USEC / framesPerSecond);
     }
 
     public FrameEncoder(final EncoderConfig encoderConfig) {
-        mEncoderConfing = encoderConfig;
+        mEncoderConfig = encoderConfig;
     }
 
     public void start() throws IOException {
         mBufferInfo = new MediaCodec.BufferInfo();
-        final MediaFormat mediaFormat = mEncoderConfing.getVideoMediaFormat();
+        final MediaFormat mediaFormat = mEncoderConfig.getVideoMediaFormat();
         mEncoder = MediaCodec.createEncoderByType(mediaFormat.getString(MediaFormat.KEY_MIME));
         mEncoder.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            mCanvasRect = new Rect(0,0,mEncoderConfing.getWidth(), mEncoderConfing.getHeight());
+            mCanvasRect = new Rect(0,0, mEncoderConfig.getWidth(), mEncoderConfig.getHeight());
         }
         mSurface = mEncoder.createInputSurface();
-        mFrameMuxer = mEncoderConfing.getFrameMuxer();
+        mFrameMuxer = mEncoderConfig.getFrameMuxer();
+        if (mEncoderConfig.getAudioTrackFileDescriptor() != null) {
+            audioExtractor = buildAudioMediaExtractor();
+        }
         mEncoder.start();
         drainEncoder(false);
     }
 
     MediaCodec getVideoMediaCodec() {
         return mEncoder;
+    }
+
+    private MediaExtractor buildAudioMediaExtractor() {
+        try {
+            AssetFileDescriptor assetFileDescriptor = mEncoderConfig.getAudioTrackFileDescriptor();
+            MediaExtractor audioExtractor = new MediaExtractor();
+            audioExtractor.setDataSource(assetFileDescriptor.getFileDescriptor(),
+                    assetFileDescriptor.getStartOffset(), assetFileDescriptor.getLength());
+            return audioExtractor;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public Canvas getCanvas() {
@@ -83,6 +102,13 @@ public class FrameEncoder {
         final Canvas canvas = getCanvas();
         canvas.drawBitmap(bitmap, 0f, 0f, null);
         createFrame(canvas);
+    }
+
+    public void createFrame(final Bitmap bitmap, int framesPerImage) {
+        // Add the same bitmap {@code framesPerImage} number of times
+        for (int i = 0; i < framesPerImage; i++) {
+            createFrame(bitmap);
+        }
     }
 
     /**
@@ -133,7 +159,12 @@ public class FrameEncoder {
                 Log.d(TAG, "encoder output format changed: " + newFormat);
 
                 // now that we have the Magic Goodies, start the muxer
-                mFrameMuxer.start(this);
+                if (audioExtractor != null) {
+                    // Start with an audio file
+                    mFrameMuxer.start(this, audioExtractor);
+                } else {
+                    mFrameMuxer.start(this);
+                }
             } else if (encoderStatus < 0) {
                 Log.w(TAG, "unexpected result from encoder.dequeueOutputBuffer: " +
                         encoderStatus);
@@ -174,11 +205,48 @@ public class FrameEncoder {
         }
     }
 
+    public void muxAudioFrames() {
+        int sampleSize = 256 * 1024;
+        int offset = 100;
+        ByteBuffer audioBuf = ByteBuffer.allocate(sampleSize);
+        MediaCodec.BufferInfo audioBufferInfo = new MediaCodec.BufferInfo();
+        boolean sawEOS = false;
+        audioExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+        long finalAudioTime;
+        long finalVideoTime = mFrameMuxer.getVideoTime();
+        while (!sawEOS) {
+            audioBufferInfo.offset = offset;
+            audioBufferInfo.size = audioExtractor.readSampleData(audioBuf, offset);
+            if (audioBufferInfo.size < 0) {
+                if (VERBOSE) Log.d(TAG, "Saw input EOS.");
+                audioBufferInfo.size = 0;
+                sawEOS = true;
+            } else {
+                finalAudioTime = audioExtractor.getSampleTime();
+                audioBufferInfo.presentationTimeUs = finalAudioTime;
+                audioBufferInfo.flags = audioExtractor.getSampleFlags();
+                mFrameMuxer.muxAudioFrame(audioBuf, audioBufferInfo);
+                audioExtractor.advance();
+                audioTrackFrameCount++;
+                if (VERBOSE) Log.d(TAG,
+                        "Frame (" + audioTrackFrameCount + " Flags:" + audioBufferInfo.flags
+                        + " Size(KB): " + audioBufferInfo.size / 1024);
+                // We want the sound to play for a few more seconds after the last image
+                if ((finalAudioTime > finalVideoTime) &&
+                        ((finalAudioTime % finalVideoTime) > (mEncoderConfig.getFramesPerImage() * SECOND_IN_USEC))) {
+                    sawEOS = true;
+                    if (VERBOSE) Log.d(TAG,
+                            "Final audio time: " + finalAudioTime + " video time: " + finalVideoTime);
+                }
+            }
+        }
+    }
+
     /**
-     * Releases encoder resources.  May be called after partial / failed initialization.
+     * We need to release the {@link MediaCodec} before we mux in the audio
      */
-    public void release() {
-        if (VERBOSE) Log.d(TAG, "releasing encoder objects");
+    public void releaseVideoEncoder() {
+        if (VERBOSE) Log.d(TAG, "releasing MediaCodec and Surface objects");
         if (mEncoder != null) {
             //This line could be isn't only call, like flush() or something
             drainEncoder(true);
@@ -190,6 +258,13 @@ public class FrameEncoder {
             mSurface.release();
             mSurface = null;
         }
+    }
+
+    /**
+     * Releases encoder resources.  May be called after partial / failed initialization.
+     */
+    public void releaseMuxer() {
+        if (VERBOSE) Log.d(TAG, "Releasing muxer");
         if (mFrameMuxer != null) {
             mFrameMuxer.release();
             mFrameMuxer = null;

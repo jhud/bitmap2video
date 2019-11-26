@@ -36,6 +36,10 @@ public class HevcEncoderConfig extends EncoderConfig {
         this(DEFAULT_PATH ,DEFAULT_WIDTH, DEFAULT_HEIGHT,15,1000000);
     }
 
+    public HevcEncoderConfig(final float framesPerSecond, final int bitRate) {
+        super(framesPerSecond, bitRate, MIME_TYPE);
+    }
+
     public HevcEncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate) {
         super(path, width, height, framesPerSecond, bitRate);
     }

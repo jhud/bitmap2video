@@ -1,5 +1,6 @@
 package com.homesoft.encoder;
 
+import android.content.res.AssetFileDescriptor;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
@@ -24,11 +25,15 @@ import java.io.IOException;
 
 public abstract class EncoderConfig {
 
-    private final String mPath;
-    private final int mWidth;
-    private final int mHeight;
-    private final float mFramesPerSecond;
-    private final int mBitRate;
+    private final float framesPerSecond;
+    private final int bitRate;
+
+    private String path;
+    private int width;
+    private int height;
+    private String mimeType;
+    private AssetFileDescriptor audioTrackFileDescriptor;
+    private int framesPerImage;
 
     abstract FrameMuxer getFrameMuxer() throws IOException;
     abstract MediaFormat getVideoMediaFormat();
@@ -52,32 +57,73 @@ public abstract class EncoderConfig {
         return false;
     }
 
+    public EncoderConfig(final float framesPerSecond, final int bitRate, final String mimeType) {
+        this.framesPerSecond = framesPerSecond;
+        this.bitRate = bitRate;
+        this.mimeType = mimeType;
+    }
+
     public EncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate) {
-        mPath = path;
-        mWidth = width;
-        mHeight = height;
-        mFramesPerSecond = framesPerSecond;
-        mBitRate = bitRate;
+        this.path = path;
+        this.width = width;
+        this.height = height;
+        this.framesPerSecond = framesPerSecond;
+        this.bitRate = bitRate;
     }
 
     public int getWidth() {
-        return mWidth;
+        return width;
     }
 
     public int getHeight() {
-        return mHeight;
+        return height;
     }
 
     public int getBitRate() {
-        return mBitRate;
+        return bitRate;
     }
 
     public float getFramePerSecond() {
-        return mFramesPerSecond;
+        return framesPerSecond;
     }
 
     public String getPath() {
-        return mPath;
+        return path;
     }
 
+    public void setPath(String path) {
+        this.path = path;
+    }
+
+    public void setWidth(int width) {
+        this.width = width;
+    }
+
+    public void setHeight(int height) {
+        this.height = height;
+    }
+
+    public String getMimeType() {
+        return mimeType;
+    }
+
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
+
+    public AssetFileDescriptor getAudioTrackFileDescriptor() {
+        return audioTrackFileDescriptor;
+    }
+
+    public void setAudioTrackFileDescriptor(AssetFileDescriptor audioTrackFileDescriptor) {
+        this.audioTrackFileDescriptor = audioTrackFileDescriptor;
+    }
+
+    public int getFramesPerImage() {
+        return framesPerImage;
+    }
+
+    public void setFramesPerImage(int framesPerImage) {
+        this.framesPerImage = framesPerImage;
+    }
 }

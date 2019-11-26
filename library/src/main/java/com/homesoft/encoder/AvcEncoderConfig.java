@@ -37,10 +37,13 @@ public class AvcEncoderConfig extends EncoderConfig {
         this(DEFAULT_PATH ,DEFAULT_WIDTH, DEFAULT_HEIGHT,15,2000000);
     }
 
+    public AvcEncoderConfig(final float framesPerSecond, final int bitRate) {
+        super(framesPerSecond, bitRate, MIME_TYPE);
+    }
+
     public AvcEncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate) {
         super(path, width, height, framesPerSecond, bitRate);
     }
-
 
     @Override
     public MediaFormat getVideoMediaFormat() {

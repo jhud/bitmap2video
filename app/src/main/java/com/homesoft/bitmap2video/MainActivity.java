@@ -2,13 +2,17 @@ package com.homesoft.bitmap2video;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.res.AssetFileDescriptor;
 import android.content.res.Resources;
 import android.graphics.Paint;
 import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.ShapeDrawable;
+import android.content.res.AssetFileDescriptor;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.FileUtils;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
@@ -23,6 +27,12 @@ import com.homesoft.drawable.PathRoundedRectShape;
 import com.homesoft.encoder.AvcEncoderConfig;
 import com.homesoft.encoder.EncoderConfig;
 import com.homesoft.encoder.HevcEncoderConfig;
+
+import java.io.File;
+
+import static com.homesoft.encoder.utils.FileUtils.getFileDescriptor;
+import static com.homesoft.encoder.utils.FileUtils.getVideoFile;
+import static com.homesoft.encoder.utils.FileUtils.shareVideo;
 
 /*
  * Copyright (C) 2019 Homesoft, LLC
@@ -41,11 +51,23 @@ import com.homesoft.encoder.HevcEncoderConfig;
  */
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = MainActivity.class.getSimpleName();
+
+    private static final int BITRATE_DEFAULT = 1500000;
+    private static final int DEFAULT_WIDTH = 320;
+    private static final int DEFAULT_HEIGHT = 240;
+    private static final int FPS = 1;
+    private static final int FRAMES_PER_IMAGE = 1;
+
     private VideoView mVideoPlayer;
     private CreateRunnable mCreateRunnable;
     private Button mPlay;
+    private Button mShare;
     private RadioGroup mCodec;
     private RadioButton mAvc, mHevc;
+    private File videoFile;
+    private EncoderConfig encoderConfig;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,24 +79,28 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.make).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                final EncoderConfig encoderConfig;
-                final int radioId = mCodec.getCheckedRadioButtonId();
-                if (radioId == mAvc.getId()) {
-                    encoderConfig = new AvcEncoderConfig();
-                } else if (radioId == mHevc.getId()) {
-                    encoderConfig = new HevcEncoderConfig();
+                encoderConfig = setupEncoder();
+                if (encoderConfig != null) {
+                    AsyncTask.THREAD_POOL_EXECUTOR.execute(mCreateRunnable =
+                            new CreateRunnable(MainActivity.this, encoderConfig, true));
                 } else {
-                    return;
+                    Log.e(TAG, "Encoder config is null!");
                 }
-                AsyncTask.THREAD_POOL_EXECUTOR.execute(mCreateRunnable = new CreateRunnable(MainActivity.this, encoderConfig, true));
             }
         });
         mVideoPlayer = findViewById(R.id.player);
+        mShare = findViewById(R.id.share);
+        mShare.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                shareVideo(MainActivity.this, videoFile, encoderConfig.getMimeType());
+            }
+        });
         mPlay = findViewById(R.id.play);
         mPlay.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view) {
-                mVideoPlayer.setVideoPath(mCreateRunnable.getOutputPath());
+                mVideoPlayer.setVideoPath(videoFile.getAbsolutePath());
                 mVideoPlayer.start();
             }
         });
@@ -86,6 +112,27 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1234);
         }
+    }
+
+    private EncoderConfig setupEncoder() {
+        final EncoderConfig encoderConfig;
+        final int radioId = mCodec.getCheckedRadioButtonId();
+        if (radioId == mAvc.getId()) {
+            encoderConfig = new AvcEncoderConfig(FPS, BITRATE_DEFAULT);
+        } else if (radioId == mHevc.getId()) {
+            encoderConfig = new HevcEncoderConfig(FPS, BITRATE_DEFAULT);
+        } else {
+            return null;
+        }
+
+        videoFile = getVideoFile(MainActivity.this, "test.mp4");
+        encoderConfig.setPath(videoFile.getAbsolutePath());
+        encoderConfig.setAudioTrackFileDescriptor(getFileDescriptor(MainActivity.this,
+                R.raw.bensound_happyrock));
+        encoderConfig.setFramesPerImage(FRAMES_PER_IMAGE);
+        encoderConfig.setHeight(DEFAULT_HEIGHT);
+        encoderConfig.setWidth(DEFAULT_WIDTH);
+        return encoderConfig;
     }
 
     private static float getFloat(final Resources res, int id) {
@@ -121,6 +168,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 mPlay.setEnabled(true);
+                mShare.setEnabled(true);
             }
         });
     }

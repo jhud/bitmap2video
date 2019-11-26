@@ -74,8 +74,13 @@ public class CreateRunnable implements Runnable {
                 frameEncoder.createFrame(canvas);
             }
         }
+        frameEncoder.releaseVideoEncoder();
+        if (mEncoderConfig.getAudioTrackFileDescriptor() != null) {
+            // Mux in the audio after we release the video encoder
+            frameEncoder.muxAudioFrames();
+        }
+        frameEncoder.releaseMuxer();
         mOutputPath = mEncoderConfig.getPath();
-        frameEncoder.release();
         mMainActivity.done();
     }
 
