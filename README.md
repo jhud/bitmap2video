@@ -12,6 +12,7 @@ Run the sample app or check out
 and [MainActivity](app/src/main/java/com/homesoft/bitmap2video/MainActivity.java)
 for an example.
 
+# Dependencies
 Add it in your root build.gradle at the end of repositories:
 
     allprojects {
@@ -55,7 +56,7 @@ frameEncoder.start();
 ## Encode
 
 ```java
-final Bitmap bitmap = BitmapFactory.decodeStream(resources.openRawResource(IMAGE_IDS[i&3]));
+final Bitmap bitmap = BitmapFactory.decodeStream(resources.openRawResource(R.drawable.image1));
 frameEncoder.createFrame(bitmap);
 
 frameEncoder.releaseVideoEncoder();
@@ -84,10 +85,10 @@ frameEncoder.releaseMuxer();
 ```
 
 ### Convenience utility functions
-We provide a few functions to simply a couple of tasks. These can be
+We provide a few functions to simplify a couple of tasks. These can be
 found as static methods under `FileUtils`
 
-##### Get an `AssetFileDescriptor`
+##### Get an `AssetFileDescriptor` from a raw resource
 `getFileDescriptor(Context context, int R.raw.sound_file)`
 
 ##### Get a `File` object for your video
@@ -104,6 +105,9 @@ declared authorities and specified paths.
 You can change which provider is being used and specify your paths if
 you register your own against the manifest and create your own
 resources. You must then pass in the appropriate paths to the functions.
+See the library's
+[AndroidManifest](app/src/main/java/com/homesoft/bitmap2video/library/src/main/AndroidManifest.xml)
+for an example.
 
 ```java
 getVideoFile(Context context, String fileDir, String fileName)
