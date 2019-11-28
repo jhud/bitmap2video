@@ -107,6 +107,9 @@ public class FrameEncoder {
         if (VERBOSE) Log.d(TAG, "drainEncoder(" + endOfStream + ")");
 
         if (endOfStream) {
+            // Add the audio track
+            mFrameMuxer.copyAudio();
+
             if (VERBOSE) Log.d(TAG, "sending EOS to encoder");
             mEncoder.signalEndOfInputStream();
         }

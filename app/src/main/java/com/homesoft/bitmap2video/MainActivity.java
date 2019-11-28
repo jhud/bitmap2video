@@ -6,12 +6,14 @@ import android.content.res.Resources;
 import android.graphics.Paint;
 import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.ShapeDrawable;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.VideoView;
@@ -23,6 +25,10 @@ import com.homesoft.drawable.PathRoundedRectShape;
 import com.homesoft.encoder.AvcEncoderConfig;
 import com.homesoft.encoder.EncoderConfig;
 import com.homesoft.encoder.HevcEncoderConfig;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 
 /*
  * Copyright (C) 2019 Homesoft, LLC
@@ -44,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private VideoView mVideoPlayer;
     private CreateRunnable mCreateRunnable;
     private Button mPlay;
+    private CheckBox mAudio;
     private RadioGroup mCodec;
     private RadioButton mAvc, mHevc;
 
@@ -60,13 +67,18 @@ public class MainActivity extends AppCompatActivity {
                 final EncoderConfig encoderConfig;
                 final int radioId = mCodec.getCheckedRadioButtonId();
                 if (radioId == mAvc.getId()) {
-                    encoderConfig = new AvcEncoderConfig();
+                    encoderConfig = new AvcEncoderConfig(AvcEncoderConfig.DEFAULT_PATH,
+                            512, 512,
+                            25, 2000000, mAudio.isChecked() ? getCacheDir()+"/test.m4a":"");
                 } else if (radioId == mHevc.getId()) {
                     encoderConfig = new HevcEncoderConfig();
                 } else {
                     return;
                 }
-                AsyncTask.THREAD_POOL_EXECUTOR.execute(mCreateRunnable = new CreateRunnable(MainActivity.this, encoderConfig, true));
+
+                AsyncTask.THREAD_POOL_EXECUTOR.execute(
+                        mCreateRunnable = new CreateRunnable(MainActivity.this,
+                                encoderConfig, true));
             }
         });
         mVideoPlayer = findViewById(R.id.player);
@@ -81,11 +93,31 @@ public class MainActivity extends AppCompatActivity {
         mCodec = findViewById(R.id.codec);
         mAvc = findViewById(R.id.avc);
         mHevc = findViewById(R.id.hevc);
+        mAudio = findViewById(R.id.audio);
         mAvc.setEnabled(EncoderConfig.isSupported(AvcEncoderConfig.MIME_TYPE));
         mHevc.setEnabled(EncoderConfig.isSupported(HevcEncoderConfig.MIME_TYPE));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1234);
         }
+
+        extractAssets();
+    }
+
+    private void extractAssets() {
+        File f = new File(getCacheDir()+"/test.m4a");
+        if (!f.exists()) try {
+
+            InputStream is = getAssets().open("test.m4a");
+            int size = is.available();
+            byte[] buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+
+
+            FileOutputStream fos = new FileOutputStream(f);
+            fos.write(buffer);
+            fos.close();
+        } catch (Exception e) { throw new RuntimeException(e); }
     }
 
     private static float getFloat(final Resources res, int id) {

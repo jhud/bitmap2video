@@ -23,6 +23,12 @@ import java.nio.ByteBuffer;
 public interface FrameMuxer {
     boolean isStarted();
     void start(final FrameEncoder frameEncoder);
+
+    /**
+     * Copy audio track into video file.
+     * Should only be called once the video is encoded, if there is an audio track to add.
+     */
+    void copyAudio();
     void muxVideoFrame(final ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo);
     void release();
 }

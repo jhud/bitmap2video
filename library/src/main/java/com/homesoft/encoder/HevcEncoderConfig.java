@@ -33,11 +33,11 @@ public class HevcEncoderConfig extends EncoderConfig {
             "test." + MIME_TYPE.split("/")[1] + '.' + DEFAULT_WIDTH + "x" + DEFAULT_HEIGHT + ".mp4").getAbsolutePath();
 
     public HevcEncoderConfig() {
-        this(DEFAULT_PATH ,DEFAULT_WIDTH, DEFAULT_HEIGHT,15,1000000);
+        this(DEFAULT_PATH ,DEFAULT_WIDTH, DEFAULT_HEIGHT,15,1000000, "");
     }
 
-    public HevcEncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate) {
-        super(path, width, height, framesPerSecond, bitRate);
+    public HevcEncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate, final String audioPath) {
+        super(path, width, height, framesPerSecond, bitRate, audioPath);
     }
 
     @Override
@@ -57,6 +57,6 @@ public class HevcEncoderConfig extends EncoderConfig {
 
     @Override
     public FrameMuxer getFrameMuxer() throws IOException {
-        return new Mp4FrameMuxer(getPath(), getFramePerSecond());
+        return new Mp4FrameMuxer(getPath(), getAudioPath(), getFramePerSecond());
     }
 }

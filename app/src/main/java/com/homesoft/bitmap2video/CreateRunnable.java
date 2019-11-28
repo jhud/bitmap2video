@@ -43,6 +43,7 @@ public class CreateRunnable implements Runnable {
     CreateRunnable(final MainActivity activity, final EncoderConfig encoderConfig, final boolean addText) {
         mMainActivity = activity;
         mEncoderConfig = encoderConfig;
+
         if (addText) {
             mPaint = new Paint();
             mPaint.setColor(Color.WHITE);
@@ -74,6 +75,8 @@ public class CreateRunnable implements Runnable {
                 frameEncoder.createFrame(canvas);
             }
         }
+
+
         mOutputPath = mEncoderConfig.getPath();
         frameEncoder.release();
         mMainActivity.done();

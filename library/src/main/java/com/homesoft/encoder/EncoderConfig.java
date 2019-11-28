@@ -25,6 +25,7 @@ import java.io.IOException;
 public abstract class EncoderConfig {
 
     private final String mPath;
+    private final String mAudioPath;
     private final int mWidth;
     private final int mHeight;
     private final float mFramesPerSecond;
@@ -52,8 +53,9 @@ public abstract class EncoderConfig {
         return false;
     }
 
-    public EncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate) {
+    public EncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate, final String audioPath) {
         mPath = path;
+        mAudioPath = audioPath;
         mWidth = width;
         mHeight = height;
         mFramesPerSecond = framesPerSecond;
@@ -78,6 +80,10 @@ public abstract class EncoderConfig {
 
     public String getPath() {
         return mPath;
+    }
+
+    public String getAudioPath() {
+        return mAudioPath;
     }
 
 }

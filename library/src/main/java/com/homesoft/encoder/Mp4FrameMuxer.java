@@ -1,8 +1,10 @@
 package com.homesoft.encoder;
 
 import android.media.MediaCodec;
+import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
+import android.util.Log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,13 +27,18 @@ import java.nio.ByteBuffer;
 
 public class Mp4FrameMuxer implements FrameMuxer {
     private final long mFrameUsec;
+    private final String mAudioFilePath;
     private final MediaMuxer mMuxer;
+
+    private MediaExtractor mAudioExtractor;
 
     private boolean mStarted;
     private int mVideoTrackIndex;
+    private int mAudioTrackIndex;
     private int mFrame;
 
-    public Mp4FrameMuxer(final String path, final float fps) throws IOException {
+    public Mp4FrameMuxer(final String path, final String audioFilePath, final float fps) throws IOException {
+        mAudioFilePath = audioFilePath;
         mFrameUsec = FrameEncoder.getFrameTime(fps);
         mMuxer = new MediaMuxer(path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
     }
@@ -47,6 +54,24 @@ public class Mp4FrameMuxer implements FrameMuxer {
 
         // now that we have the Magic Goodies, start the muxer
         mVideoTrackIndex = mMuxer.addTrack(newFormat);
+
+        if (mAudioFilePath.length() > 0) {
+            try {
+                mAudioExtractor = new MediaExtractor();
+                mAudioExtractor.setDataSource(mAudioFilePath);
+                mAudioExtractor.selectTrack(0);
+            }
+            catch(IOException e) {
+                Log.e("Mp4FrameMuxer", "File not found.");
+                return;
+            }
+
+            MediaFormat audioFormat = mAudioExtractor.getTrackFormat(0);
+            mAudioTrackIndex = mMuxer.addTrack(audioFormat);
+            mAudioExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+        }
+
+
         mMuxer.start();
         mStarted = true;
     }
@@ -65,8 +90,38 @@ public class Mp4FrameMuxer implements FrameMuxer {
     }
 
     @Override
+    public void copyAudio() {
+        if (mAudioFilePath.length() == 0) {
+            return;
+        }
+
+        int maxChunkSize = 1024 * 1024;
+        ByteBuffer buffer = ByteBuffer.allocate(maxChunkSize);
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+
+        while (true) {
+            int chunkSize = mAudioExtractor.readSampleData(buffer, 0);
+
+            if (chunkSize >= 0) {
+                bufferInfo.presentationTimeUs = mAudioExtractor.getSampleTime();
+                bufferInfo.flags = mAudioExtractor.getSampleFlags();
+                bufferInfo.size = chunkSize;
+
+                mMuxer.writeSampleData(mAudioTrackIndex, buffer, bufferInfo);
+                mAudioExtractor.advance();
+            } else {
+                break;
+            }
+        }
+    }
+
+    @Override
     public void release() {
         mMuxer.stop();
         mMuxer.release();
+
+        if (mAudioExtractor != null) {
+            mAudioExtractor.release();
+        }
     }
 }

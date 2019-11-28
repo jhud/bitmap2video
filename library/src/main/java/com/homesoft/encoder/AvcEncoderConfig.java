@@ -28,17 +28,17 @@ public class AvcEncoderConfig extends EncoderConfig {
     private static final int IFRAME_INTERVAL = 0;          // 10 seconds between I-frames
 
     //Defaults from the BigFlake Sample
-    private static final int DEFAULT_WIDTH = 320;
-    private static final int DEFAULT_HEIGHT = 240;
-    private static final String DEFAULT_PATH = new File(Environment.getExternalStorageDirectory(),
+    public static final int DEFAULT_WIDTH = 320;
+    public static final int DEFAULT_HEIGHT = 240;
+    public static final String DEFAULT_PATH = new File(Environment.getExternalStorageDirectory(),
             "test." + MIME_TYPE.split("/")[1] + '.' + DEFAULT_WIDTH + "x" + DEFAULT_HEIGHT + ".mp4").getAbsolutePath();
 
     public AvcEncoderConfig() {
-        this(DEFAULT_PATH ,DEFAULT_WIDTH, DEFAULT_HEIGHT,15,2000000);
+        this(DEFAULT_PATH ,DEFAULT_WIDTH, DEFAULT_HEIGHT,15,2000000, "");
     }
 
-    public AvcEncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate) {
-        super(path, width, height, framesPerSecond, bitRate);
+    public AvcEncoderConfig(final String path, final int width, final int height, final float framesPerSecond, final int bitRate, final String audioPath) {
+        super(path, width, height, framesPerSecond, bitRate, audioPath);
     }
 
 
@@ -59,6 +59,6 @@ public class AvcEncoderConfig extends EncoderConfig {
 
     @Override
     public FrameMuxer getFrameMuxer() throws IOException {
-        return new Mp4FrameMuxer(getPath(), getFramePerSecond());
+        return new Mp4FrameMuxer(getPath(), getAudioPath(), getFramePerSecond());
     }
 }
